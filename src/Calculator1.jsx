@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import rough from 'roughjs'
 import { getStroke } from 'perfect-freehand'
+import Button from "./Components/Button"
 
 const generator = rough.generator()
 
@@ -457,72 +458,125 @@ const Calculator = () => {
         setScale(prevState => Math.min(3, Math.max(0.1, prevState + scale)))
     }
 
+    function saveCanvasAndSendAPI() {
+        const canvas = document.getElementById('myCanvas'); // Your canvas ID
+        canvasRef.current.toBlob((blob) => {
+            if (blob) {
+                sendImageToServer(blob);
+                console.log("successfully converted canvas to Blob");
+            } else {
+                console.log("Failed to convert canvas to Blob");
+            }
+        }, 'image/png');
+    }
+
+    async function sendImageToServer(imageBlob) {
+        const formData = new FormData();
+        formData.append('image', imageBlob, 'canvas_image.png'); // Append the image file
+        formData.append('dict_of_vars', JSON.stringify({ x: 5, y: 10 })); // Example variables
+    
+        try {
+            const response = await fetch('http://localhost:5000/calculate', {
+                method: 'POST',
+                body: formData
+            });
+    
+            const result = await response.json();
+            if (result.success) {
+                console.log("AI Response:", result.result);
+            } else {
+                console.log("Error:", result.message);
+            }
+        } catch (error) {
+            console.log("Error sending image:", error);
+        }
+    }
+    
+
     return <div>
         <div className="fixed z-20">
-            <input
-                type="radio"
-                id="selection"
-                checked={tool == "selection"}
-                onChange={() => setTool("selection")}
-            /><label htmlFor="selection" className="text-white">selection</label>
-            <input
-                type="radio"
-                id="line"
-                checked={tool == "line"}
-                onChange={() => setTool("line")}
-            /><label htmlFor="line" className="text-white">Line</label>
-            <input
-                type="radio"
-                id="rectangle"
-                checked={tool == "rectangle"}
-                onChange={() => setTool("rectangle")}
-            /><label htmlFor="rectangle" className="text-white">rectangle</label>
-            <input
-                type="radio"
-                id="text"
-                checked={tool == "text"}
-                onChange={() => setTool("text")}
-            /><label htmlFor="text" className="text-white">text</label>
-            <input
-                id="circle"
-                type="radio"
-                checked={tool == "circle"}
-                onChange={() => setTool("circle")}
-            /><label htmlFor="circle" className="text-white">circle</label>
-            <input
-                type="radio"
-                id="pencil"
-                checked={tool == "pencil"}
-                onChange={() => setTool("pencil")}
-            /><label htmlFor="pencil" className="text-white">pencil</label>
-            <button onClick={undo} className="text-white p-2 " >Undo</button>
-            <button onClick={redo} className="text-white p-2 " >Redo</button>
             {action == "writing" ?
                 <textarea
                     ref={textAreaRef}
                     onBlur={handleBlur}
                     className="fixed font-['Arial'] bg-transparent text-white m-0 p-0 border-none outline-none overflow-scroll whitespace-pre-wrap"
                     style={{
-                        fontSize: `${24*scale}px`,
+                        fontSize: `${24 * scale}px`,
                         top: (selectedElement.y1 - 7) * scale + panOffset.y * scale - scaleOffset.y,
                         left: selectedElement.x1 * scale + panOffset.x * scale - scaleOffset.x,
                     }} /> : null}
-            <div className="inline-block text-white">
-                <button onClick={() => onZoom(-.2)} >-</button>
-                <span className="px-2">{(scale * 100).toFixed() + "%"}</span>
-                <button onClick={() => onZoom(+.2)} >+</button>
-            </div>
             <button className="bg-white text-black"
-            onClick={()=>{
-                if(canvasRef.current){
-                    const dataurl = canvasRef.current.toDataURL()
-                    const image = document.createElement("a")
-                    image.href = dataurl
-                    image.download = "image.png"
-                    image.click() 
-                }
-            }}
+                onClick={saveCanvasAndSendAPI}
             >Save</button>
+        </div>
+        <div className="max-w-12 ml-2 absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+            <div className="bg-white p-1 rounded flex flex-col gap-1">
+                <Button
+                    Icon={<svg fill="currentColor" width="25" height="25" class="bi bi-square" viewBox="0 0 16 16">
+                        <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
+                    </svg>}
+                    IsSelected={tool == "rectangle"}
+                    OnClick={() => setTool("rectangle")}
+                />
+                <Button
+                    Icon={<svg fill="currentColor" class="bi bi-slash" viewBox="0 0 16 16">
+                        <path d="M2 14L14 2" stroke="currentColor" stroke-width="1" />
+                    </svg>
+                    }
+                    IsSelected={tool == "line"}
+                    OnClick={() => setTool("line")}
+                />
+                <Button
+                    Icon={<svg width="27" height="27" fill="currentColor" class="bi bi-fonts" viewBox="0 0 16 16">
+                        <path d="M12.258 3h-8.51l-.083 2.46h.479c.26-1.544.758-1.783 2.693-1.845l.424-.013v7.827c0 .663-.144.82-1.3.923v.52h4.082v-.52c-1.162-.103-1.306-.26-1.306-.923V3.602l.431.013c1.934.062 2.434.301 2.693 1.846h.479z" />
+                    </svg>}
+                    IsSelected={tool == "text"}
+                    OnClick={() => setTool("text")}
+                />
+                <Button
+                    Icon={<svg width="25" height="25" fill="currentColor" class="bi bi-circle" viewBox="0 0 16 16">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                    </svg>}
+                    IsSelected={tool == "circle"}
+                    OnClick={() => setTool("circle")}
+                />
+                <Button
+                    Icon={<svg width="23" height="23" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16">
+                        <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z" />
+                    </svg>}
+                    IsSelected={tool == "pencil"}
+                    OnClick={() => setTool("pencil")}
+                />
+                <Button
+                    Icon={<svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" fill="currentColor" class="bi bi-cursor-fill" viewBox="0 0 16 16">
+                        <path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z" />
+                    </svg>}
+                    IsSelected={tool == "selection"}
+                    OnClick={() => setTool("selection")}
+                />
+
+            </div>
+            <div className="bg-white  p-1 rounded flex flex-col gap-1">
+                <Button
+                    Icon={<svg height="25" viewBox="0 0 48 48" width="25" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h48v48H0z" fill="none"/><path d="M36.79 21.2C33.11 17.97 28.29 16 23 16c-9.3 0-17.17 6.06-19.92 14.44L7.81 32c2.1-6.39 8.1-11 15.19-11 3.91 0 7.46 1.44 10.23 3.77L26 32h18V14l-7.21 7.2z"/></svg>}
+                    OnClick={redo}
+                />
+                <Button
+                    Icon={<svg height="25" viewBox="0 0 48 48" width="25" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h48v48H0z" fill="none"/><path d="M25 16c-5.29 0-10.11 1.97-13.8 5.2L4 14v18h18l-7.23-7.23C17.54 22.44 21.09 21 25 21c7.09 0 13.09 4.61 15.19 11l4.73-1.56C42.17 22.06 34.3 16 25 16z"/></svg>}
+                    OnClick={undo}
+                />
+            </div>
+        </div>
+        <div className=" ml-2 absolute right-5 bottom-5 bg-white p-1 rounded flex gap-1 items-center">
+            <Button
+                Icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 4V11H20V13H13V20H11V13H4V11H11V4H13Z" fill="black"/></svg>}
+                OnClick={() => onZoom(+.2)}
+            />
+            <span className="px-2">{(scale * 100).toFixed() + "%"}</span>
+            <Button
+                Icon={<svg width="25" height="25" viewBox="0 0 24 24" fill="none"><path d="M4 11H20V13H4V11Z" fill="black"/></svg>}
+                OnClick={() => onZoom(-.2)}
+            />
         </div>
         <canvas
             id="canvas"
@@ -536,6 +590,4 @@ const Calculator = () => {
         ></canvas>
     </div>
 }
-
-
 export default Calculator
